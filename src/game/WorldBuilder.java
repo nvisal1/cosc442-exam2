@@ -26,6 +26,11 @@ public class WorldBuilder {
 	}
 
 	private WorldBuilder randomizeTiles() {
+		determineTiles();
+		return this;
+	}
+
+	private void determineTiles() {
 		for (int x = 0; x < width; x++) {
 			for (int y = 0; y < height; y++) {
 				for (int z = 0; z < depth; z++) {
@@ -33,38 +38,41 @@ public class WorldBuilder {
 				}
 			}
 		}
-		return this;
 	}
 
 	private WorldBuilder smooth(int times) {
 		Tile[][][] tiles2 = new Tile[width][height][depth];
 		for (int time = 0; time < times; time++) {
 
-			for (int x = 0; x < width; x++) {
-				for (int y = 0; y < height; y++) {
-					for (int z = 0; z < depth; z++) {
-						int floors = 0;
-						int rocks = 0;
-	
-						for (int ox = -1; ox < 2; ox++) {
-							for (int oy = -1; oy < 2; oy++) {
-								if (x + ox < 0 || x + ox >= width || y + oy < 0
-										|| y + oy >= height)
-									continue;
-	
-								if (tiles[x + ox][y + oy][z] == Tile.FLOOR)
-									floors++;
-								else
-									rocks++;
-							}
-						}
-						tiles2[x][y][z] = floors >= rocks ? Tile.FLOOR : Tile.WALL;
-					}
-				}
-			}
+			traverseTiles(tiles2);
 			tiles = tiles2;
 		}
 		return this;
+	}
+
+	private void traverseTiles(Tile[][][] tiles2) {
+		for (int x = 0; x < width; x++) {
+			for (int y = 0; y < height; y++) {
+				for (int z = 0; z < depth; z++) {
+					int floors = 0;
+					int rocks = 0;
+
+					for (int ox = -1; ox < 2; ox++) {
+						for (int oy = -1; oy < 2; oy++) {
+							if (x + ox < 0 || x + ox >= width || y + oy < 0
+									|| y + oy >= height)
+								continue;
+
+							if (tiles[x + ox][y + oy][z] == Tile.FLOOR)
+								floors++;
+							else
+								rocks++;
+						}
+					}
+					tiles2[x][y][z] = floors >= rocks ? Tile.FLOOR : Tile.WALL;
+				}
+			}
+		}
 	}
 	
 	private WorldBuilder createRegions(){
@@ -102,6 +110,10 @@ public class WorldBuilder {
 		open.add(new Point(x,y,z));
 		regions[x][y][z] = region;
 		
+		return isEmpty(region, size, open);
+	}
+
+	private int isEmpty(int region, int size, ArrayList<Point> open) {
 		while (!open.isEmpty()){
 			Point p = open.remove(0);
 
@@ -131,6 +143,10 @@ public class WorldBuilder {
 	private void connectRegionsDown(int z){
 		List<Integer> connected = new ArrayList<Integer>();
 		
+		isConnected(z, connected);
+	}
+
+	private void isConnected(int z, List<Integer> connected) {
 		for (int x = 0; x < width; x++){
 			for (int y = 0; y < height; y++){
 				int r = regions[x][y][z] * 1000 + regions[x][y][z+1];
@@ -160,6 +176,13 @@ public class WorldBuilder {
 	public List<Point> findRegionOverlaps(int z, int r1, int r2) {
 		ArrayList<Point> candidates = new ArrayList<Point>();
 		
+		addCandidates(z, r1, r2, candidates);
+		
+		Collections.shuffle(candidates);
+		return candidates;
+	}
+
+	private void addCandidates(int z, int r1, int r2, ArrayList<Point> candidates) {
 		for (int x = 0; x < width; x++){
 			for (int y = 0; y < height; y++){
 				if (tiles[x][y][z] == Tile.FLOOR
@@ -170,9 +193,6 @@ public class WorldBuilder {
 				}
 			}
 		}
-		
-		Collections.shuffle(candidates);
-		return candidates;
 	}
 	
 	private WorldBuilder addExitStairs() {
